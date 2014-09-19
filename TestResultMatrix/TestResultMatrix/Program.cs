@@ -18,9 +18,11 @@ namespace TestResultMatrix
 				if (args.Count() < 2 || args.Count() > 3)
 				{
 					Console.WriteLine("Usage: TestResultMatrix.exe tpcUrl teamProjectName [requirementQueryName]");
-					Console.WriteLine("\ttpcUrl: url to Team Project collection - e.g. http://localhost:8080/tfs/defaultcollection");
-					Console.WriteLine("\tteamProjectName: name of Team Project - e.g. FabFiber");
-					Console.WriteLine("\trequirementQueryName: (optional) flat-list query of requirements.");
+					Console.WriteLine();
+					Console.WriteLine("  tpcUrl: url to Team Project collection - e.g. http://localhost:8080/tfs/defaultcollection");
+					Console.WriteLine("  teamProjectName: name of Team Project - e.g. FabFiber");
+					Console.WriteLine("  requirementQueryName: (optional) flat-list query of requirements.");
+					Console.WriteLine();
 					Console.WriteLine("If you do not specify requirementQueryName, the tool will get all work items in the requirement category");
 					Console.WriteLine();
 					return;
