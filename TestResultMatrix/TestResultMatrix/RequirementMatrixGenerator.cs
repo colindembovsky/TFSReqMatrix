@@ -17,16 +17,13 @@ namespace TestResultMatrix
 
         public string RequirementsQuery { get; private set; }
 
-        public string TestPlan { get; private set; }
-
         public RequirementMatrix Matrix { get; private set; }
 
-        public RequirementMatrixGenerator(string tpcUrl, string projectName, string requirementsQuery = null, string testPlan = null)
+        public RequirementMatrixGenerator(string tpcUrl, string projectName, string requirementsQuery = null)
         {
             TpcUrl = tpcUrl;
             ProjectName = projectName;
             RequirementsQuery = requirementsQuery;
-            TestPlan = testPlan;
         }
 
         public void Process()
@@ -44,7 +41,7 @@ namespace TestResultMatrix
                            Source.[System.TeamProject] = @project AND {0}
                            Source.[System.WorkItemType] IN GROUP 'Microsoft.RequirementCategory' AND
                            Target.[System.WorkItemType] IN GROUP 'Microsoft.TestCaseCategory'
-                         MODE(MAYCONTAIN)", GetIDClause());
+                         MODE(MAYCONTAIN)", GetIDClause(store));
 
             var hQyery = new Query(store, wiql, new Dictionary<string, object>() { { "project", ProjectName } });
             var links = hQyery.RunLinkQuery();
@@ -72,41 +69,61 @@ namespace TestResultMatrix
             Matrix.Requirements.ForEach(t => testIds = testIds.Union(t.TestIds).ToList());
             Matrix.Tests = testIds.ConvertAll(i => new WorkItemInfo() { Id = i });
 
-            var plans = testSvc.GetTeamProject(ProjectName).TestPlans.Query(string.Format("SELECT * FROM TestPlan {0}", GetPlanClause()));
+            var plans = testSvc.GetTeamProject(ProjectName).TestPlans.Query("SELECT * FROM TestPlan");
 
             foreach (var testId in testIds)
             {
                 var mostRecent = GetLatestTestResult(testId, plans);
-                if (mostRecent == "N/A")
-                {
-                    Matrix.Tests.Remove(Matrix.Tests.First(t => t.Id == testId));
-                }
-                else
-                {
-                    Matrix.Tests.First(t => t.Id == testId).MatrixState = mostRecent;
-                }
+                Matrix.Tests.First(t => t.Id == testId).MatrixState = mostRecent;
             }
 
             Matrix.Requirements.ForEach(r => GetItemInfo(r, store));
             Matrix.Tests.ForEach(t => GetItemInfo(t, store, false));
         }
 
-        private string GetPlanClause()
+        private string GetIDClause(WorkItemStore store)
         {
-            if (!string.IsNullOrEmpty(TestPlan))
+            if (!string.IsNullOrEmpty(RequirementsQuery))
             {
-                return string.Format("WHERE PlanName = '{0}'", TestPlan);
+                var query = FindQueryRecursive(store.Projects[ProjectName].QueryHierarchy);
+                if (query == null)
+                {
+                    throw new ApplicationException(string.Format("Could not find query [{0}]", RequirementsQuery));
+                }
+                if (query.QueryType != QueryType.List)
+                {
+                    throw new ApplicationException(string.Format("Query [{0}] is not a flat-list query - only flat-list queries are supported", RequirementsQuery));
+                }
+
+                var reqs = store.Query(query.QueryText, new Dictionary<string, object> { { "project", ProjectName } } );
+                var ids = reqs.Cast<WorkItem>().Select(w => w.Id.ToString()).Aggregate("", (w, s) => s + "," + w);
+                ids = ids.Substring(0, ids.Length - 1);
+
+                return string.Format("Source.[System.ID] IN ({0}) AND", ids);
             }
             return "";
         }
 
-        private string GetIDClause()
+        private QueryDefinition FindQueryRecursive(QueryFolder folder)
         {
-            if (!string.IsNullOrEmpty(RequirementsQuery))
+            var query = folder.OfType<QueryDefinition>().FirstOrDefault(q => q.Name == RequirementsQuery);
+            if (query != null)
             {
-                return "Source.[System.ID] IN (3, 30, 35) AND";
+                return query;
             }
-            return "";
+            else
+            {
+                foreach (var subFolder in folder.OfType<QueryFolder>())
+                {
+                    query = FindQueryRecursive(subFolder);
+                    if (query != null)
+                    {
+                        return query;
+                    }
+                }
+            }
+
+            return null;
         }
 
         private void GetItemInfo(WorkItemInfo item, WorkItemStore store, bool isRequirement = true)

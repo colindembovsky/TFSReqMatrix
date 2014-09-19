@@ -13,13 +13,30 @@ namespace TestResultMatrix
     {
         static void Main(string[] args)
         {
-            var reqMatrixGenerator = new RequirementMatrixGenerator("http://localhost:8080/tfs/defaultcollection", "FabrikamFiber", "x", "Iteration 2");
+            if (args.Count() < 2 || args.Count() > 3)
+            {
+                Console.WriteLine("Usage: TestResultMatrix.exe tpcUrl teamProjectName [requirementQueryName]");
+                Console.WriteLine("\ttpcUrl: url to Team Project collection - e.g. http://localhost:8080/tfs/defaultcollection");
+                Console.WriteLine("\tteamProjectName: name of Team Project - e.g. FabFiber");
+                Console.WriteLine("\trequirementQueryName: (optional) flat-list query of requirements.");
+                Console.WriteLine("If you do not specify requirementQueryName, the tool will get all work items in the requirement category");
+                Console.WriteLine();
+                return;
+            }
+
+            string reqQuery = null;
+            if (args.Count() == 3)
+            {
+                reqQuery = args[2];
+            }
+
+            var reqMatrixGenerator = new RequirementMatrixGenerator(args[0], args[1], reqQuery);
             reqMatrixGenerator.Process();
 
-            PrintMatrix(reqMatrixGenerator.Matrix);
+            //PrintMatrix(reqMatrixGenerator.Matrix);
 
-            Console.WriteLine("Press any key to continue...");
-            Console.ReadLine();
+            var excel = new MatrixExcel(reqMatrixGenerator.Matrix);
+            excel.GenerateMatrixSheet();
         }
 
         private static void PrintMatrix(RequirementMatrix matrix)
@@ -36,6 +53,9 @@ namespace TestResultMatrix
                     }
                 }
             }
+
+            Console.WriteLine("Press any key to continue...");
+            Console.ReadLine();
         }
     }
 }
