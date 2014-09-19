@@ -17,6 +17,9 @@ namespace TestResultMatrix
 			{
 				if (args.Count() < 2 || args.Count() > 3)
 				{
+					Console.WriteLine("TestResultMatrix (c) 2014 Colin Dembovsky");
+					Console.WriteLine("http://colinsalmcorner.com");
+					Console.WriteLine();
 					Console.WriteLine("Usage: TestResultMatrix.exe tpcUrl teamProjectName [requirementQueryName]");
 					Console.WriteLine();
 					Console.WriteLine("  tpcUrl: url to Team Project collection - e.g. http://localhost:8080/tfs/defaultcollection");
